@@ -1,0 +1,205 @@
+# Currying in JavaScript
+
+## Definition
+
+Currying is a functional programming technique that transforms a function that takes multiple arguments into a sequence of functions that each take a single argument. When a curried function is called with an argument, it returns a new function that expects the next argument. This process continues until all the original arguments have been provided, at which point the final result is returned.
+
+In essence, currying allows you to apply arguments to a function one at a time, creating a chain of function calls.
+
+## Generic Currying Implementation in JavaScript
+
+```javascript
+function curry(func) {
+  return function curried(...args) {
+    if (args.length >= func.length) {
+      return func(...args);
+    } else {
+      return function(...moreArgs) {
+        return curried(...args, ...moreArgs);
+      };
+    }
+  };
+}
+
+// Example function to be curried
+function sum(a, b, c) {
+  return a + b + c;
+}
+
+// Applying the curry function
+const curriedSum = curry(sum);
+
+// Calling the curried function step by step
+const sumA = curriedSum(5);
+const sumAB = sumA(10);
+const result = sumAB(15);
+
+console.log(`Original function result: ${sum(5, 10, 15)}`);
+console.log(`Curried function result: ${result}`);
+```
+
+### Step-by-Step Execution for Generic Currying
+
+Let's trace the execution of the `curriedSum` function with the example scenario: `curriedSum(5)(10)(15)`.
+
+**Scenario**: We want to calculate the sum of 5, 10, and 15 using the curried sum function.
+
+#### Log of Values:
+
+1. **`const curriedSum = curry(sum);`**
+   - The curry function is called with the sum function as input.
+   - The curry function returns the inner function curried.
+   - curriedSum now refers to this curried function.
+
+2. **`const sumA = curriedSum(5);`**
+   - The curried function is called with args = [5].
+   - args.length (which is 1) is less than func.length (which is 3 for the sum function).
+   - The else block is executed.
+   - A new anonymous function is created: `function(...moreArgs) { return curried(...args, ...moreArgs); }` which effectively becomes `function(...moreArgs) { return curried(5, ...moreArgs); }`.
+   - This anonymous function is returned and assigned to sumA.
+   - **Log**: sumA now holds a function. This function expects the next argument and will call curried with 5 and that argument.
+
+3. **`const sumAB = sumA(10);`**
+   - The function stored in sumA (the anonymous function from the previous step) is called with moreArgs = [10].
+   - Inside this anonymous function, curried(5, 10) is executed.
+   - The curried function is called again with args = [5, 10].
+   - args.length (which is 2) is still less than func.length (which is 3).
+   - The else block is executed again.
+   - A new anonymous function is created: `function(...moreArgs) { return curried(5, 10, ...moreArgs); }`.
+   - This anonymous function is returned and assigned to sumAB.
+   - **Log**: sumAB now holds a function. This function expects the final argument and will call curried with 5, 10, and that argument.
+
+4. **`const result = sumAB(15);`**
+   - The function stored in sumAB (the anonymous function from the previous step) is called with moreArgs = [15].
+   - Inside this anonymous function, curried(5, 10, 15) is executed.
+   - The curried function is called again with args = [5, 10, 15].
+   - args.length (which is 3) is now equal to func.length (which is 3).
+   - The if block is executed.
+   - The original sum function is called with sum(5, 10, 15).
+   - The result of sum(5, 10, 15) (which is 30) is returned.
+   - This result is assigned to the variable result.
+   - **Log**: result now holds the value 30.
+
+5. **`console.log(`Original function result: ${sum(5, 10, 15)}`);`**: Prints "Original function result: 30".
+6. **`console.log(`Curried function result: ${result}`);`**: Prints "Curried function result: 30".
+
+This dry run demonstrates how the curry function transforms the sum function into a series of single-argument functions in JavaScript, allowing us to apply the arguments one at a time until the final result is obtained.
+
+## Currying with Placeholders
+
+Sometimes we want to apply arguments in a different order or skip some arguments temporarily. Placeholder currying allows for this flexibility.
+
+```javascript
+// Define a placeholder symbol
+const _ = Symbol('placeholder');
+
+function curryWithPlaceholders(func) {
+  return function curried(...args) {
+    // Check if we have enough non-placeholder arguments
+    const isComplete = args.length >= func.length && 
+                      !args.slice(0, func.length).includes(_);
+    
+    if (isComplete) {
+      return func(...args);
+    }
+    
+    return function(...nextArgs) {
+      // Replace placeholders with nextArgs values where applicable
+      const newArgs = args.map(arg => 
+        arg === _ && nextArgs.length ? nextArgs.shift() : arg
+      );
+      
+      // Append any remaining nextArgs
+      return curried(...newArgs, ...nextArgs);
+    };
+  };
+}
+
+// Example function to be curried
+function sum(a, b, c) {
+  return a + b + c;
+}
+
+// Applying the curryWithPlaceholders function
+const curriedSum = curryWithPlaceholders(sum);
+
+// Normal order: sum(5, 10, 15) = 30
+console.log(curriedSum(5)(10)(15)); // 30
+
+// Using placeholders to apply arguments in different order
+console.log(curriedSum(_)(10)(5)(15)); // 30
+console.log(curriedSum(_)(_)(15)(5)(10)); // 30
+```
+
+### Step-by-Step Execution for Placeholder Currying
+
+Let's trace the execution of the placeholder currying with this example: `curriedSum(_)(10)(5)(15)`. This scenario applies the second argument first, then the first, then the third.
+
+**Scenario**: We want to calculate the sum of 5, 10, and 15 using the placeholder curried sum function, but provide the arguments in a different order.
+
+#### Log of Values:
+
+1. **`const curriedSum = curryWithPlaceholders(sum);`**
+   - The curryWithPlaceholders function is called with the sum function as input.
+   - It returns the inner function curried.
+   - curriedSum now refers to this curried function.
+
+2. **`curriedSum(_)`**
+   - The curried function is called with args = [_] (the placeholder).
+   - The check for isComplete returns false because args.length (1) is less than func.length (3) and there's a placeholder.
+   - The function returns a new function that will take the nextArgs.
+   - **Log**: A new function is returned that will replace placeholders with actual arguments.
+
+3. **`curriedSum(_)(10)`**
+   - The returned function from the previous step is called with nextArgs = [10].
+   - Inside this function:
+     - newArgs is calculated as args.map(arg => arg === _ && nextArgs.length ? nextArgs.shift() : arg)
+     - Since args = [_] and nextArgs = [10], nextArgs.shift() returns 10 and newArgs becomes [10]
+     - curried(...newArgs, ...nextArgs) is called, which is curried(10)
+   - The curried function checks isComplete again, which is still false.
+   - Another function is returned.
+   - **Log**: Another function is returned, with the state holding the value 10 in the first position.
+
+4. **`curriedSum(_)(10)(5)`**
+   - The function from the previous step is called with nextArgs = [5].
+   - Inside this function:
+     - args = [10] (no placeholders)
+     - newArgs = [10] (unchanged)
+     - curried(...newArgs, ...nextArgs) is called, which is curried(10, 5)
+   - The curried function checks isComplete again, which is still false.
+   - Another function is returned.
+   - **Log**: Another function is returned, with the state holding the values 10 and 5.
+
+5. **`curriedSum(_)(10)(5)(15)`**
+   - The function from the previous step is called with nextArgs = [15].
+   - Inside this function:
+     - args = [10, 5] (no placeholders)
+     - newArgs = [10, 5] (unchanged)
+     - curried(...newArgs, ...nextArgs) is called, which is curried(10, 5, 15)
+   - The curried function checks isComplete, which is now true since we have 3 arguments and no placeholders.
+   - The original sum function is called with func(10, 5, 15).
+   - The result of sum(10, 5, 15) (which is 30) is returned.
+   - **Log**: The final result is 30.
+
+This dry run demonstrates how the curryWithPlaceholders function allows us to apply arguments in different orders, providing more flexibility than traditional currying. In this case, we provided the arguments in the order: second argument, first argument, third argument, yet still got the correct result of 30.
+
+
+## Advantages of Currying
+
+1. **Partial Application**: Creates reusable functions with pre-set parameters
+2. **Function Composition**: Easier to combine and chain multiple functions
+3. **Point-Free Style**: Allows for cleaner, more declarative code
+4. **Readability**: Can make complex function transformations more readable
+5. **Specialization**: Create specialized versions of more generic functions
+6. **Memoization**: Makes caching function results more straightforward
+7. **Modular Code**: Promotes separation of concerns and modular design
+
+## Disadvantages of Currying
+
+1. **Performance Overhead**: Can create additional function calls and closures
+2. **Learning Curve**: Unfamiliar to developers not experienced with functional programming
+3. **Debugging Difficulty**: Stack traces can be harder to understand
+4. **Readability Concerns**: May decrease readability for those unfamiliar with the pattern
+5. **Limited Type Information**: Some type systems struggle with curried functions
+6. **Unnecessary Complexity**: For simple operations, currying may add unwarranted complexity
+7. **Memory Usage**: Multiple closures can increase memory consumption
